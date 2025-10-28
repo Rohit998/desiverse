@@ -47,6 +47,7 @@ body {
   background: transparent;
   transition: transform 0.3s ease;
   border-radius: 8px;
+  object-fit: contain;
 }
 
 .logo:hover {

@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import '../styles/globals.css';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -8,7 +9,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="navbar">
           <div className="navbar-container">
             <div className="logo-container">
-              <img src="/logo.png" alt="DesiVerse Logo" className="logo" />
+              <Image src="/logo.png" alt="DesiVerse Logo" width={80} height={80} className="logo" />
             </div>
             <nav className="navbar-nav">
               <a href="/" className="nav-link">Home</a>
@@ -26,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="footer-container">
             <div className="footer-content">
               <div className="footer-brand">
-                <img src="/logo.png" alt="DesiVerse Logo" className="footer-logo" />
+                <Image src="/logo.png" alt="DesiVerse Logo" width={50} height={50} className="footer-logo" />
                 <p className="footer-description">
                   Connecting Desis worldwide through community, housing, and cultural events.
                 </p>
