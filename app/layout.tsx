@@ -1,27 +1,13 @@
 import React from 'react';
 import Image from 'next/image';
+import Navbar from '../components/Navbar';
 import '../styles/globals.css';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <header className="navbar">
-          <div className="navbar-container">
-            <div className="logo-container">
-              <Image src="/logo.png" alt="DesiVerse Logo" width={80} height={80} className="logo" />
-            </div>
-            <nav className="navbar-nav">
-              <a href="/" className="nav-link">Home</a>
-              <a href="/desi-rent" className="nav-link">DesiRent Hub</a>
-              <a href="/desi-circle" className="nav-link">DesiCircle</a>
-            </nav>
-            <div className="navbar-actions">
-              <button className="btn btn-outline">Sign In</button>
-              <button className="btn">Get Started</button>
-            </div>
-          </div>
-        </header>
+        <Navbar />
         <main>{children}</main>
         <footer className="footer">
           <div className="footer-container">
