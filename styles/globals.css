@@ -1655,16 +1655,13 @@ select:focus, input:focus {
 }
 
   .chatgpt-input-area {
-    padding: 0.75rem 0.5rem;
+    padding: 1.5rem 1rem;
     background: #ffffff;
-    border-top: 1px solid #e5e5e5;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 100;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    position: relative;
     width: 100%;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+    max-width: 768px;
+    margin: 0 auto;
   }
 
 .input-container {
@@ -3595,20 +3592,15 @@ select:focus, input:focus {
   /* Adjust chat messages to account for navbar and input area */
   .chatgpt-messages {
     padding-top: 60px;
-    padding-bottom: 80px; /* Space for input area at bottom */
+    padding-bottom: 0;
   }
 
   .chatgpt-input-area {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    position: relative;
     width: 100%;
-    z-index: 100;
     background: #ffffff;
-    padding: 0.75rem 0.5rem;
-    border-top: 1px solid #e5e5e5;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+    padding: 1rem 0.5rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
   }
 
   .welcome-screen {

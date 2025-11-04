@@ -490,73 +490,73 @@ export default function ChatInterface() {
                 </div>
               )}
               <div ref={messagesEndRef} />
-            </div>
-          )}
-        </div>
-
-        {/* Input Area - Fixed at Bottom when messages exist */}
-        {hasStarted && (
-          <div className="chatgpt-input-area">
-            <div className="input-container">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                multiple
-                accept="image/*,.pdf,.doc,.docx,.txt"
-                style={{ display: 'none' }}
-              />
-              <div className="input-wrapper">
-                <button
-                  className="attach-button"
-                  onClick={handleAttachClick}
-                  type="button"
-                  title="Attach file"
-                >
-                  <Paperclip size={18} />
-                </button>
-                <textarea
-                  ref={textareaRef}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyPress}
-                  placeholder="Message DesiVerse AI..."
-                  className="chat-input"
-                  rows={1}
-                  disabled={isTyping}
-                  style={{ color: '#343541' }}
-                />
-                <button
-                  className="send-button"
-                  onClick={handleSendMessage}
-                  disabled={!inputValue.trim() || isTyping}
-                >
-                  {isTyping ? (
-                    <Loader2 size={18} className="spinning" />
-                  ) : (
-                    <Send size={18} />
-                  )}
-                </button>
-              </div>
-              {uploadedFiles.length > 0 && (
-                <div className="uploaded-files-preview">
-                  {uploadedFiles.map((file, index) => (
-                    <div key={index} className="file-preview-item">
-                      <span className="file-name">{file.name}</span>
+              
+              {/* Input Area - Inside Main Messages Area */}
+              {hasStarted && (
+                <div className="chatgpt-input-area">
+                  <div className="input-container">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      multiple
+                      accept="image/*,.pdf,.doc,.docx,.txt"
+                      style={{ display: 'none' }}
+                    />
+                    <div className="input-wrapper">
                       <button
-                        className="remove-file-btn"
-                        onClick={() => removeFile(index)}
+                        className="attach-button"
+                        onClick={handleAttachClick}
                         type="button"
+                        title="Attach file"
                       >
-                        ×
+                        <Paperclip size={18} />
+                      </button>
+                      <textarea
+                        ref={textareaRef}
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        onKeyDown={handleKeyPress}
+                        placeholder="Message DesiVerse AI..."
+                        className="chat-input"
+                        rows={1}
+                        disabled={isTyping}
+                        style={{ color: '#343541' }}
+                      />
+                      <button
+                        className="send-button"
+                        onClick={handleSendMessage}
+                        disabled={!inputValue.trim() || isTyping}
+                      >
+                        {isTyping ? (
+                          <Loader2 size={18} className="spinning" />
+                        ) : (
+                          <Send size={18} />
+                        )}
                       </button>
                     </div>
-                  ))}
+                    {uploadedFiles.length > 0 && (
+                      <div className="uploaded-files-preview">
+                        {uploadedFiles.map((file, index) => (
+                          <div key={index} className="file-preview-item">
+                            <span className="file-name">{file.name}</span>
+                            <button
+                              className="remove-file-btn"
+                              onClick={() => removeFile(index)}
+                              type="button"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
