@@ -16,10 +16,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background: #ffffff;
   min-height: 100vh;
+  min-height: -webkit-fill-available; /* For mobile browsers */
   color: #343541;
   line-height: 1.6;
   margin: 0;
   padding: 0;
+  padding-bottom: env(safe-area-inset-bottom);
   overflow-x: hidden;
   position: fixed;
   width: 100%;
@@ -3593,14 +3595,20 @@ select:focus, input:focus {
   .chatgpt-messages {
     padding-top: 60px;
     padding-bottom: 0;
+    /* Add padding at bottom to ensure input is visible above browser UI */
+    padding-bottom: env(safe-area-inset-bottom, 0);
   }
 
   .chatgpt-input-area {
-    position: relative;
+    position: sticky;
+    bottom: 0;
     width: 100%;
     background: #ffffff;
     padding: 1rem 0.5rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
     border-top: 1px solid rgba(0, 0, 0, 0.05);
+    z-index: 10;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
   }
 
   .welcome-screen {
