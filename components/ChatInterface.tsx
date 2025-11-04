@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Plus, MoreVertical, User, Loader2, LogIn, UserPlus, RotateCcw, Image as ImageIcon, FileText, Mic, Smile, Paperclip } from 'lucide-react';
-import Link from 'next/link';
+import { Send, Plus, Menu, User, Loader2, LogIn, Settings, HelpCircle, Paperclip, MessageSquare, X } from 'lucide-react';
 import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Message {
   id: string;
@@ -11,6 +11,14 @@ interface Message {
   sender: 'user' | 'assistant';
   timestamp: Date;
   isTyping?: boolean;
+  isStreaming?: boolean;
+}
+
+interface Conversation {
+  id: string;
+  title: string;
+  messages: Message[];
+  timestamp: Date;
 }
 
 export default function ChatInterface() {
@@ -18,94 +26,118 @@ export default function ChatInterface() {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
-  const [currentConversation, setCurrentConversation] = useState('Immigration Assistant');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const streamingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  // Predefined conversations
-  const conversations = {
-    'Immigration Assistant': {
-      title: 'Immigration Assistant',
-      description: 'Visa help and guidance...',
-      messages: [
-        {
-          id: '1',
-          content: "Hello! I'm your Immigration Assistant. I can help you with visa applications, immigration processes, document requirements, and guide you through your journey to a new country. What would you like to know?",
-          sender: 'assistant' as const,
-          timestamp: new Date()
-        }
-      ]
-    },
-    'H1B Visa Application': {
-      title: 'H1B Visa Application',
-      description: 'Step-by-step guidance needed',
-      messages: [
-        {
-          id: '1',
-          content: "I can help you with your H1B visa application process. Let me guide you through the requirements, timeline, and steps needed to apply for an H1B visa.",
-          sender: 'assistant' as const,
-          timestamp: new Date()
-        },
-        {
-          id: '2',
-          content: "What specific aspect of the H1B process would you like help with? I can assist with:",
-          sender: 'assistant' as const,
-          timestamp: new Date()
-        },
-        {
-          id: '3',
-          content: "• Employer requirements and sponsorship\n• Educational qualifications\n• Labor Condition Application (LCA)\n• Form I-129 preparation\n• Documentation checklist\n• Timeline and deadlines",
-          sender: 'assistant' as const,
-          timestamp: new Date()
-        }
-      ]
-    },
-    'Green Card Process': {
-      title: 'Green Card Process',
-      description: 'Document requirements help',
-      messages: [
-        {
-          id: '1',
-          content: "I'll help you understand the Green Card process. There are several paths to permanent residency, each with different requirements and timelines.",
-          sender: 'assistant' as const,
-          timestamp: new Date()
-        },
-        {
-          id: '2',
-          content: "Which Green Card category are you interested in?",
-          sender: 'assistant' as const,
-          timestamp: new Date()
-        },
-        {
-          id: '3',
-          content: "• Employment-based (EB-1, EB-2, EB-3)\n• Family-based sponsorship\n• Diversity Visa Lottery\n• Asylum/Refugee status\n• Investment-based (EB-5)",
-          sender: 'assistant' as const,
-          timestamp: new Date()
-        }
-      ]
-    }
-  };
-
-  const loadConversation = (conversationId: string) => {
-    const conversation = conversations[conversationId as keyof typeof conversations];
-    if (conversation) {
-      setCurrentConversation(conversationId);
-      setMessages(conversation.messages);
-      setHasStarted(true);
-    }
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
+  // Handle mobile detection
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+    };
 
-    // Mark that conversation has started
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
+  }, []);
+
+  // Handle mobile sidebar - close on outside click
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (sidebarOpen) {
+        const target = e.target as HTMLElement;
+        const sidebar = document.querySelector('.chatgpt-sidebar');
+        const backdrop = document.querySelector('.sidebar-backdrop');
+        if (sidebar && !sidebar.contains(target) && target !== backdrop) {
+          setSidebarOpen(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [sidebarOpen, isMobile]);
+
+  // Cleanup streaming interval on unmount
+  useEffect(() => {
+    return () => {
+      if (streamingIntervalRef.current) {
+        clearInterval(streamingIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [inputValue]);
+
+  const typeMessage = (messageId: string, fullText: string) => {
+    if (streamingIntervalRef.current) {
+      clearInterval(streamingIntervalRef.current);
+    }
+
+    let currentIndex = 0;
+    const maxLength = fullText.length;
+
+    streamingIntervalRef.current = setInterval(() => {
+      currentIndex++;
+      
+      if (currentIndex <= maxLength) {
+        setMessages(prev => prev.map(msg => 
+          msg.id === messageId 
+            ? { ...msg, content: fullText.slice(0, currentIndex), isStreaming: true }
+            : msg
+        ));
+        scrollToBottom();
+      } else {
+        if (streamingIntervalRef.current) {
+          clearInterval(streamingIntervalRef.current);
+          streamingIntervalRef.current = null;
+        }
+        setMessages(prev => prev.map(msg => 
+          msg.id === messageId 
+            ? { ...msg, isStreaming: false }
+            : msg
+        ));
+        setIsTyping(false);
+      }
+    }, 15);
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || isTyping) return;
+
+    if (streamingIntervalRef.current) {
+      clearInterval(streamingIntervalRef.current);
+      streamingIntervalRef.current = null;
+    }
+
     if (!hasStarted) {
       setHasStarted(true);
     }
@@ -121,256 +153,410 @@ export default function ChatInterface() {
     setInputValue('');
     setIsTyping(true);
 
-    // Simulate AI response
     setTimeout(() => {
       const responses = [
-        "I'd be happy to help you with your immigration journey! Let me guide you through the process step by step.",
-        "Great question about immigration! I can help you understand the requirements and procedures.",
-        "I can assist you with visa applications, document preparation, and immigration timelines.",
-        "That's an important immigration matter. Let me provide you with accurate information and guidance.",
-        "I understand you need help with immigration processes. Let me search for the most current information for you."
+        "I'd be happy to help you with your immigration journey! Let me guide you through the process step by step. Here's what you need to know:\n\n1. **Document Preparation**: Gather all required documents including passports, educational certificates, and employment letters.\n\n2. **Application Process**: Submit your application through the appropriate channels based on your visa type.\n\n3. **Timeline**: Processing times vary, typically ranging from 2-6 months depending on the visa category.\n\nWould you like more details on any specific aspect?",
+        "Great question about immigration! I can help you understand the requirements and procedures. Let me break this down for you:\n\n**Key Points to Consider:**\n\n• Eligibility requirements vary by visa type\n• Document verification is crucial\n• Processing times depend on current workload\n• Keep track of important deadlines\n\nI can provide more specific guidance based on your situation. What would you like to know more about?",
+        "I can assist you with visa applications, document preparation, and immigration timelines. Here's a comprehensive overview:\n\n**Visa Application Steps:**\n1. Determine your visa category\n2. Complete required forms accurately\n3. Gather supporting documents\n4. Submit application and fees\n5. Attend interviews if required\n6. Track application status\n\n**Important Reminders:**\n- Double-check all information before submission\n- Keep copies of all documents\n- Maintain communication with immigration authorities\n\nIs there a specific visa type or process you'd like detailed information about?",
+        "That's an important immigration matter. Let me provide you with accurate information and guidance. Based on common immigration questions, here are the essential points:\n\n**Understanding the Process:**\n\nImmigration procedures can be complex, but breaking them down into manageable steps helps. The key is staying organized and informed throughout the journey.\n\n**Common Areas Needing Attention:**\n- Financial documentation\n- Medical examinations\n- Background checks\n- Interview preparation\n\nWould you like me to elaborate on any specific area that concerns you?",
+        "I understand you need help with immigration processes. Let me search for the most current information for you. Here's what I can tell you:\n\n**Current Immigration Landscape:**\n\n• Regulations are updated regularly\n• Processing times fluctuate based on various factors\n• Requirements may differ by country of origin\n• Professional guidance is recommended for complex cases\n\n**Getting Started:**\n\n1. Assess your eligibility\n2. Identify the right visa category\n3. Prepare documentation thoroughly\n4. Submit complete applications\n5. Follow up appropriately\n\nWhat specific aspect of immigration would you like to explore further?"
       ];
       
       const randomResponse = responses[Math.floor(Math.random() * responses.length)];
       
+      const assistantMessageId = (Date.now() + 1).toString();
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: randomResponse,
+        id: assistantMessageId,
+        content: '',
         sender: 'assistant',
-        timestamp: new Date()
+        timestamp: new Date(),
+        isStreaming: true
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-      setIsTyping(false);
-    }, 1500);
+      
+      setTimeout(() => {
+        typeMessage(assistantMessageId, randomResponse);
+      }, 100);
+    }, 800);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInputValue(e.target.value);
-    // Mark as started when user starts typing
-    if (!hasStarted && e.target.value.trim()) {
-      setHasStarted(true);
+  const handleNewChat = () => {
+    // Save current conversation to history if it has messages
+    if (messages.length > 0) {
+      const firstUserMessage = messages.find(msg => msg.sender === 'user');
+      let title = firstUserMessage?.content || 'New Chat';
+      
+      // Truncate title if too long
+      if (title.length > 50) {
+        title = title.slice(0, 50) + '...';
+      }
+      
+      const newConversation: Conversation = {
+        id: Date.now().toString(),
+        title: title,
+        messages: [...messages],
+        timestamp: new Date()
+      };
+      
+      setConversations(prev => [newConversation, ...prev]);
+    }
+    
+    // Clear current chat
+    if (streamingIntervalRef.current) {
+      clearInterval(streamingIntervalRef.current);
+      streamingIntervalRef.current = null;
+    }
+    setMessages([]);
+    setHasStarted(false);
+    setInputValue('');
+    setIsTyping(false);
+    setUploadedFiles([]);
+    
+    // Close sidebar on mobile when new chat is pressed
+    if (isMobile) {
+      setSidebarOpen(false);
     }
   };
 
+  const handleLoadConversation = (conversation: Conversation) => {
+    if (streamingIntervalRef.current) {
+      clearInterval(streamingIntervalRef.current);
+      streamingIntervalRef.current = null;
+    }
+    setMessages(conversation.messages);
+    setHasStarted(conversation.messages.length > 0);
+    setInputValue('');
+    setIsTyping(false);
+    // Close sidebar on mobile after selecting conversation
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const fileArray = Array.from(files);
+      setUploadedFiles(prev => [...prev, ...fileArray]);
+      
+      // You can handle file upload logic here
+      console.log('Files uploaded:', fileArray);
+    }
+  };
+
+  const handleAttachClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const removeFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   return (
-    <div className="chat-container">
-      <div className="chat-sidebar">
-        <div className="sidebar-header">
-          <div className="new-chat-btn">
-            <Plus size={20} />
-            <span>New Immigration Chat</span>
-          </div>
-          <button className="sidebar-menu-btn">
-            <MoreVertical size={20} />
+    <div className="chatgpt-container">
+      {/* Mobile backdrop overlay */}
+      {sidebarOpen && isMobile && (
+        <div 
+          className="sidebar-backdrop"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      {/* Sidebar - ChatGPT/Perplexity Style */}
+      <aside className={`chatgpt-sidebar ${sidebarOpen ? 'open' : ''}`}>
+        <div className="sidebar-content">
+          {/* Hamburger Toggle Button at Top */}
+          <button 
+            className="sidebar-toggle-btn-top"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+          >
+            <div className="menu-icon-wrapper">
+              <Menu size={20} className={`menu-icon ${sidebarOpen ? 'hidden' : 'visible'}`} />
+              <X size={20} className={`close-icon ${sidebarOpen ? 'visible' : 'hidden'}`} />
+            </div>
           </button>
-        </div>
-        
-        <div className="conversation-history">
-          <div 
-            className={`conversation-item ${currentConversation === 'Immigration Assistant' ? 'active' : ''}`}
-            onClick={() => loadConversation('Immigration Assistant')}
-          >
-            <div className="conversation-preview">
-              <h4>Immigration Assistant</h4>
-              <p>Visa help and guidance...</p>
-            </div>
-            <div className="conversation-time">Now</div>
-          </div>
           
-          <div 
-            className={`conversation-item ${currentConversation === 'H1B Visa Application' ? 'active' : ''}`}
-            onClick={() => loadConversation('H1B Visa Application')}
-          >
-            <div className="conversation-preview">
-              <h4>H1B Visa Application</h4>
-              <p>Step-by-step guidance needed</p>
-            </div>
-            <div className="conversation-time">2h ago</div>
-          </div>
+          {/* New Chat Button */}
+          <button className="new-chat-sidebar-btn" onClick={handleNewChat}>
+            <Plus size={18} />
+            {sidebarOpen && <span>New chat</span>}
+          </button>
           
-          <div 
-            className={`conversation-item ${currentConversation === 'Green Card Process' ? 'active' : ''}`}
-            onClick={() => loadConversation('Green Card Process')}
-          >
-            <div className="conversation-preview">
-              <h4>Green Card Process</h4>
-              <p>Document requirements help</p>
-            </div>
-            <div className="conversation-time">Yesterday</div>
-          </div>
-        </div>
-        
-        <div className="sidebar-footer">
-          <div className="user-profile">
-            <div className="user-avatar">
-              <User size={20} />
-            </div>
-            <div className="user-info">
-              <h4>Rohit</h4>
-              <p>Immigration Seeker</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="chat-main">
-        <div className="chat-header">
-          <div className="chat-title">
-            <Image src="/logo.png" alt="DesiVerse Logo" width={32} height={32} className="chat-logo" />
-            <h2>{currentConversation}</h2>
-          </div>
-          <div className="chat-actions">
-            <button 
-              className="action-btn" 
-              title="Reset Welcome Animation"
-              onClick={() => {
-                localStorage.removeItem('desiverse-welcome-seen');
-                window.location.reload();
-              }}
-            >
-              <RotateCcw size={18} />
-            </button>
-            <Link href="/login" className="action-btn" title="Login">
-              <LogIn size={18} />
-            </Link>
-            <Link href="/signup" className="action-btn" title="Signup">
-              <UserPlus size={18} />
-            </Link>
-          </div>
-        </div>
-
-        <div className={`messages-container ${!hasStarted ? 'centered' : ''}`}>
-          {!hasStarted ? (
-            <div className="welcome-message">
-              <div className="welcome-content">
-                <Image src="/logo.png" alt="DesiVerse Logo" width={60} height={60} className="welcome-logo" />
-                <h2 className="welcome-title">What help do you need?</h2>
-                <p className="welcome-subtitle">Your AI immigration assistant for the Desi community</p>
-                <div className="welcome-suggestions">
-                  <button 
-                    className="suggestion-btn"
-                    onClick={() => {
-                      setInputValue("Help me with H1B visa application process");
-                      setHasStarted(true);
-                    }}
+          {/* Conversation History */}
+          {sidebarOpen && (
+            <>
+              <div className="sidebar-divider"></div>
+              <div className="sidebar-conversations">
+                {conversations.map((conversation) => (
+                  <div 
+                    key={conversation.id}
+                    className="conversation-item-minimal"
+                    onClick={() => handleLoadConversation(conversation)}
                   >
-                    H1B Visa Help
+                    <div className="conversation-icon">
+                      <MessageSquare size={16} />
+                    </div>
+                    <span>{conversation.title}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          
+          {/* Footer Section */}
+          <div className="sidebar-footer-content">
+            {sidebarOpen && (
+              <>
+                <div className="sidebar-footer-divider"></div>
+                <div className="sidebar-actions">
+                  <button className="sidebar-action-btn">
+                    <HelpCircle size={18} />
+                    <span>Help & FAQ</span>
                   </button>
-                  <button 
-                    className="suggestion-btn"
-                    onClick={() => {
-                      setInputValue("What documents do I need for green card?");
-                      setHasStarted(true);
-                    }}
-                  >
-                    Green Card Documents
-                  </button>
-                  <button 
-                    className="suggestion-btn"
-                    onClick={() => {
-                      setInputValue("Explain OPT and STEM extension process");
-                      setHasStarted(true);
-                    }}
-                  >
-                    OPT & STEM Extension
+                  <button className="sidebar-action-btn">
+                    <Settings size={18} />
+                    <span>Settings</span>
                   </button>
                 </div>
+                <div className="sidebar-footer-divider"></div>
+                {/* User Profile Section */}
+                <div className="sidebar-user-profile">
+                  <div className="user-profile-content">
+                    <div className="user-profile-avatar">
+                      <User size={20} />
+                    </div>
+                    <div className="user-profile-info">
+                      <div className="user-profile-name">Rohit</div>
+                      <div className="user-profile-email">rohit@example.com</div>
+                    </div>
+                  </div>
+                  <button className="login-btn-sidebar">
+                    <LogIn size={18} />
+                    <span>Login</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Chat Area */}
+      <div className="chatgpt-main">
+        {/* Logo at top left - shown after chat starts (desktop only) */}
+        {hasStarted && (
+          <div className="top-left-logo">
+            <Image src="/logo.png" alt="DesiVerse" width={60} height={60} />
+          </div>
+        )}
+
+        {/* Mobile transparent navbar with hamburger */}
+        {isMobile && (
+          <nav className="mobile-navbar">
+            <button
+              className="mobile-menu-button-navbar"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              title={sidebarOpen ? "Close menu" : "Open menu"}
+            >
+              <div className="menu-icon-wrapper">
+                <Menu size={24} className={`menu-icon ${sidebarOpen ? 'hidden' : 'visible'}`} />
+                <X size={24} className={`close-icon ${sidebarOpen ? 'visible' : 'hidden'}`} />
+              </div>
+            </button>
+          </nav>
+        )}
+
+        {/* Messages Area */}
+        <div className={`chatgpt-messages ${!hasStarted ? 'centered' : ''}`}>
+          {!hasStarted ? (
+            <div className="welcome-screen">
+              {/* Big Logo at Start - Above Input Box */}
+              <div className="welcome-logo-container">
+                <Image src="/logo.png" alt="DesiVerse" width={180} height={180} />
+              </div>
+              
+              {/* Centered Input Box in Welcome Screen */}
+              <div className="centered-input-wrapper-welcome">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  multiple
+                  accept="image/*,.pdf,.doc,.docx,.txt"
+                  style={{ display: 'none' }}
+                />
+                <div className="input-wrapper">
+                  <button
+                    className="attach-button"
+                    onClick={handleAttachClick}
+                    type="button"
+                    title="Attach file"
+                  >
+                    <Paperclip size={18} />
+                  </button>
+                  <textarea
+                    ref={textareaRef}
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    placeholder="Message DesiVerse AI..."
+                    className="chat-input"
+                    rows={1}
+                    disabled={isTyping}
+                    style={{ color: '#343541' }}
+                  />
+                  <button
+                    className="send-button"
+                    onClick={handleSendMessage}
+                    disabled={!inputValue.trim() || isTyping}
+                  >
+                    {isTyping ? (
+                      <Loader2 size={18} className="spinning" />
+                    ) : (
+                      <Send size={18} />
+                    )}
+                  </button>
+                </div>
+                {uploadedFiles.length > 0 && (
+                  <div className="uploaded-files-preview">
+                    {uploadedFiles.map((file, index) => (
+                      <div key={index} className="file-preview-item">
+                        <span className="file-name">{file.name}</span>
+                        <button
+                          className="remove-file-btn"
+                          onClick={() => removeFile(index)}
+                          type="button"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ) : (
-            <>
-              {messages.map((message) => (
-                <div key={message.id} className={`message ${message.sender}`}>
-                  <div className="message-avatar">
-                    {message.sender === 'user' ? <User size={20} /> : <Image src="/logo.png" alt="DesiVerse Logo" width={20} height={20} className="rounded-full" />}
-                  </div>
-                  <div className="message-content">
-                    <div className="message-text">
-                      {message.content}
+            <div className="messages-list">
+              <AnimatePresence>
+                {messages.map((message, index) => (
+                  <motion.div
+                    key={message.id}
+                    className={`message-wrapper ${message.sender}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className={`message-container ${message.sender}`}>
+                      {message.sender === 'user' ? (
+                        <div className="message-text-wrapper user-message">
+                          <div className="message-text-content">
+                            {message.content}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="message-text-wrapper assistant-message">
+                          <div className="message-text-content">
+                            {message.content}
+                            {message.isStreaming && (
+                              <span className="streaming-cursor">▊</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="message-time">
-                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              
-              {isTyping && (
-                <div className="message assistant">
-                  <div className="message-avatar">
-                    <Image src="/logo.png" alt="DesiVerse Logo" width={20} height={20} className="rounded-full" />
-                  </div>
-                  <div className="message-content">
-                    <div className="typing-indicator">
-                      <span></span>
-                      <span></span>
-                      <span></span>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+              {isTyping && !messages.some(m => m.isStreaming) && (
+                <div className="message-wrapper assistant">
+                  <div className="message-container assistant">
+                    <div className="message-text-wrapper assistant-message">
+                      <div className="typing-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
-            </>
+              <div ref={messagesEndRef} />
+            </div>
           )}
-          
-          <div ref={messagesEndRef} />
         </div>
 
-        {/* Always Visible Centered Input Box */}
-        <div className="centered-input-container">
-          <div className="centered-input-wrapper">
-            <textarea
-              value={inputValue}
-              onChange={handleInputChange}
-              onKeyPress={handleKeyPress}
-              placeholder="Ask me about visas, immigration processes, or document requirements..."
-              className="centered-chat-input"
-              rows={1}
-            />
-            
-            <button 
-              onClick={handleSendMessage}
-              className="centered-send-button"
-              disabled={!inputValue.trim() || isTyping}
-            >
-              {isTyping ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
-            </button>
+        {/* Input Area - Fixed at Bottom when messages exist */}
+        {hasStarted && (
+          <div className="chatgpt-input-area">
+            <div className="input-container">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                multiple
+                accept="image/*,.pdf,.doc,.docx,.txt"
+                style={{ display: 'none' }}
+              />
+              <div className="input-wrapper">
+                <button
+                  className="attach-button"
+                  onClick={handleAttachClick}
+                  type="button"
+                  title="Attach file"
+                >
+                  <Paperclip size={18} />
+                </button>
+                <textarea
+                  ref={textareaRef}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  placeholder="Message DesiVerse AI..."
+                  className="chat-input"
+                  rows={1}
+                  disabled={isTyping}
+                  style={{ color: '#343541' }}
+                />
+                <button
+                  className="send-button"
+                  onClick={handleSendMessage}
+                  disabled={!inputValue.trim() || isTyping}
+                >
+                  {isTyping ? (
+                    <Loader2 size={18} className="spinning" />
+                  ) : (
+                    <Send size={18} />
+                  )}
+                </button>
+              </div>
+              {uploadedFiles.length > 0 && (
+                <div className="uploaded-files-preview">
+                  {uploadedFiles.map((file, index) => (
+                    <div key={index} className="file-preview-item">
+                      <span className="file-name">{file.name}</span>
+                      <button
+                        className="remove-file-btn"
+                        onClick={() => removeFile(index)}
+                        type="button"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-          
-          {/* Input Icons */}
-          <div className="centered-input-icons">
-            <button className="input-icon-btn" title="Upload Photo">
-              <ImageIcon size={16} />
-              <input type="file" accept="image/*" className="file-input" />
-            </button>
-            <button className="input-icon-btn" title="Upload Document">
-              <FileText size={16} />
-              <input type="file" accept=".pdf,.doc,.docx,.txt" className="file-input" />
-            </button>
-            <button className="input-icon-btn" title="Attach File">
-              <Paperclip size={16} />
-              <input type="file" className="file-input" />
-            </button>
-            <button className="input-icon-btn" title="Voice Message">
-              <Mic size={16} />
-            </button>
-            <button className="input-icon-btn" title="Emoji">
-              <Smile size={16} />
-            </button>
-          </div>
-          
-          <div className="centered-input-footer">
-            <p>DesiVerse Immigration AI can make mistakes. Always verify important immigration information with official sources.</p>
-          </div>
-        </div>
-
+        )}
       </div>
     </div>
   );
