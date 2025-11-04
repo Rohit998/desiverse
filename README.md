@@ -1,3 +1,3 @@
 # DesiVerse
 
-A community app for Desi immigrants. Modules: DesiRent Hub, DesiCircle, and more.
+A Immgirant assisstant app for Desi immigrants. 
