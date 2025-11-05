@@ -5,6 +5,54 @@ import { Send, Plus, Menu, User, Loader2, LogIn, Settings, HelpCircle, Paperclip
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Function to format markdown text with headings and bold text
+const formatMessageText = (text: string) => {
+  // Split by lines to process headings separately
+  const lines = text.split('\n');
+  const processedLines: string[] = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // Check for headings first (they should be at start of line)
+    if (/^##\s+/.test(line)) {
+      // ## Heading (h2) - block element, no <br> needed
+      processedLines.push(line.replace(/^##\s+(.+)$/, '<h2 class="ai-heading">$1</h2>'));
+    } else if (/^###\s+/.test(line)) {
+      // ### Subheading (h3) - block element, no <br> needed
+      processedLines.push(line.replace(/^###\s+(.+)$/, '<h3 class="ai-subheading">$1</h3>'));
+    } else if (/^####\s+/.test(line)) {
+      // #### Sub-subheading (h4) - block element, no <br> needed
+      processedLines.push(line.replace(/^####\s+(.+)$/, '<h4 class="ai-sub-subheading">$1</h4>'));
+    } else if (/^\*\s+/.test(line)) {
+      // * Bullet point - convert to styled bullet
+      const bulletText = line.replace(/^\*\s+(.+)$/, '$1');
+      // Convert bold text in bullet
+      const processedBullet = bulletText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      processedLines.push(`<div class="ai-bullet-item">${processedBullet}</div>`);
+    } else if (/^-\s+/.test(line)) {
+      // - Bullet point (alternative format) - convert to styled bullet
+      const bulletText = line.replace(/^-\s+(.+)$/, '$1');
+      // Convert bold text in bullet
+      const processedBullet = bulletText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      processedLines.push(`<div class="ai-bullet-item">${processedBullet}</div>`);
+    } else if (line.trim() === '') {
+      // Empty line - add a line break
+      processedLines.push('<br>');
+    } else {
+      // Regular line - convert bold text **text** to <strong>
+      const processedLine = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      processedLines.push(processedLine);
+      // Add <br> after regular lines (except before headings and bullets)
+      if (i < lines.length - 1 && !/^#{2,4}\s+/.test(lines[i + 1]) && !/^[\*\-]\s+/.test(lines[i + 1])) {
+        processedLines.push('<br>');
+      }
+    }
+  }
+  
+  return processedLines.join('');
+};
+
 interface Message {
   id: string;
   content: string;
@@ -153,17 +201,36 @@ export default function ChatInterface() {
     setInputValue('');
     setIsTyping(true);
 
-    setTimeout(() => {
-      const responses = [
-        "I'd be happy to help you with your immigration journey! Let me guide you through the process step by step. Here's what you need to know:\n\n1. **Document Preparation**: Gather all required documents including passports, educational certificates, and employment letters.\n\n2. **Application Process**: Submit your application through the appropriate channels based on your visa type.\n\n3. **Timeline**: Processing times vary, typically ranging from 2-6 months depending on the visa category.\n\nWould you like more details on any specific aspect?",
-        "Great question about immigration! I can help you understand the requirements and procedures. Let me break this down for you:\n\n**Key Points to Consider:**\n\n• Eligibility requirements vary by visa type\n• Document verification is crucial\n• Processing times depend on current workload\n• Keep track of important deadlines\n\nI can provide more specific guidance based on your situation. What would you like to know more about?",
-        "I can assist you with visa applications, document preparation, and immigration timelines. Here's a comprehensive overview:\n\n**Visa Application Steps:**\n1. Determine your visa category\n2. Complete required forms accurately\n3. Gather supporting documents\n4. Submit application and fees\n5. Attend interviews if required\n6. Track application status\n\n**Important Reminders:**\n- Double-check all information before submission\n- Keep copies of all documents\n- Maintain communication with immigration authorities\n\nIs there a specific visa type or process you'd like detailed information about?",
-        "That's an important immigration matter. Let me provide you with accurate information and guidance. Based on common immigration questions, here are the essential points:\n\n**Understanding the Process:**\n\nImmigration procedures can be complex, but breaking them down into manageable steps helps. The key is staying organized and informed throughout the journey.\n\n**Common Areas Needing Attention:**\n- Financial documentation\n- Medical examinations\n- Background checks\n- Interview preparation\n\nWould you like me to elaborate on any specific area that concerns you?",
-        "I understand you need help with immigration processes. Let me search for the most current information for you. Here's what I can tell you:\n\n**Current Immigration Landscape:**\n\n• Regulations are updated regularly\n• Processing times fluctuate based on various factors\n• Requirements may differ by country of origin\n• Professional guidance is recommended for complex cases\n\n**Getting Started:**\n\n1. Assess your eligibility\n2. Identify the right visa category\n3. Prepare documentation thoroughly\n4. Submit complete applications\n5. Follow up appropriately\n\nWhat specific aspect of immigration would you like to explore further?"
-      ];
+    // Prepare messages for API (format: user/assistant)
+    const messagesForAPI = [...messages, userMessage].map(msg => ({
+      sender: msg.sender,
+      content: msg.content
+    }));
+
+    try {
+      console.log('Calling API with messages:', messagesForAPI);
       
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ messages: messagesForAPI }),
+      });
+
+      console.log('API Response status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('API Error:', errorData);
+        throw new Error(errorData.error || 'Failed to get response');
+      }
+
+      const data = await response.json();
+      console.log('API Response data:', data);
       
+      const aiResponse = data.message || data.error || 'Sorry, I could not generate a response.';
+
       const assistantMessageId = (Date.now() + 1).toString();
       const assistantMessage: Message = {
         id: assistantMessageId,
@@ -175,10 +242,23 @@ export default function ChatInterface() {
 
       setMessages(prev => [...prev, assistantMessage]);
       
+      // Type out the response character by character
       setTimeout(() => {
-        typeMessage(assistantMessageId, randomResponse);
+        typeMessage(assistantMessageId, aiResponse);
       }, 100);
-    }, 800);
+    } catch (error: any) {
+      console.error('Error calling API:', error);
+      setIsTyping(false);
+      
+      const errorMessageId = (Date.now() + 1).toString();
+      const errorMessage: Message = {
+        id: errorMessageId,
+        content: error.message || 'Sorry, I encountered an error. Please try again or check your API key configuration.',
+        sender: 'assistant',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -464,12 +544,12 @@ export default function ChatInterface() {
                         </div>
                       ) : (
                         <div className="message-text-wrapper assistant-message">
-                          <div className="message-text-content">
-                            {message.content}
-                            {message.isStreaming && (
-                              <span className="streaming-cursor">▊</span>
-                            )}
-                          </div>
+                          <div 
+                            className="message-text-content"
+                            dangerouslySetInnerHTML={{ 
+                              __html: formatMessageText(message.content) + (message.isStreaming ? '<span class="streaming-cursor">▊</span>' : '')
+                            }}
+                          />
                         </div>
                       )}
                     </div>
