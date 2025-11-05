@@ -1262,6 +1262,13 @@ select:focus, input:focus {
   padding-bottom: 0;
 }
 
+@media (max-width: 768px) {
+  .chatgpt-main {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 .top-left-logo {
   position: absolute;
   top: 1rem;
@@ -3604,13 +3611,16 @@ select:focus, input:focus {
   .chatgpt-messages {
     padding-top: 60px;
     padding-bottom: 0;
-    /* Add padding at bottom to ensure input is visible above browser UI */
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+    /* Add padding at bottom to prevent overlap with input box */
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .messages-list {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   }
 
   .chatgpt-input-area {
-    position: sticky;
-    bottom: 0;
+    position: relative;
     width: 100%;
     background: #ffffff;
     padding: 1rem 0.5rem;
@@ -3618,7 +3628,7 @@ select:focus, input:focus {
     border-top: 1px solid rgba(0, 0, 0, 0.05);
     z-index: 10;
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
-    margin-bottom: env(safe-area-inset-bottom, 0px);
+    margin-top: auto;
   }
 
   .welcome-screen {
