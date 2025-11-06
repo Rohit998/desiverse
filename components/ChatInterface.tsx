@@ -77,6 +77,7 @@ export default function ChatInterface() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const streamingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -269,8 +270,9 @@ export default function ChatInterface() {
   };
 
   const handleNewChat = () => {
-    // Save current conversation to history if it has messages
-    if (messages.length > 0) {
+    // Save current conversation to history if it has messages AND it's not already saved
+    if (messages.length > 0 && !currentConversationId) {
+      // Only save if this is a new conversation (not already in history)
       const firstUserMessage = messages.find(msg => msg.sender === 'user');
       let title = firstUserMessage?.content || 'New Chat';
       
@@ -299,6 +301,7 @@ export default function ChatInterface() {
     setInputValue('');
     setIsTyping(false);
     setUploadedFiles([]);
+    setCurrentConversationId(null); // Reset current conversation ID
     
     // Close sidebar on mobile when new chat is pressed
     if (isMobile) {
@@ -307,6 +310,25 @@ export default function ChatInterface() {
   };
 
   const handleLoadConversation = (conversation: Conversation) => {
+    // Save current conversation if it has messages and is not already saved
+    if (messages.length > 0 && !currentConversationId) {
+      const firstUserMessage = messages.find(msg => msg.sender === 'user');
+      let title = firstUserMessage?.content || 'New Chat';
+      
+      if (title.length > 50) {
+        title = title.slice(0, 50) + '...';
+      }
+      
+      const newConversation: Conversation = {
+        id: Date.now().toString(),
+        title: title,
+        messages: [...messages],
+        timestamp: new Date()
+      };
+      
+      setConversations(prev => [newConversation, ...prev]);
+    }
+    
     if (streamingIntervalRef.current) {
       clearInterval(streamingIntervalRef.current);
       streamingIntervalRef.current = null;
@@ -315,6 +337,7 @@ export default function ChatInterface() {
     setHasStarted(conversation.messages.length > 0);
     setInputValue('');
     setIsTyping(false);
+    setCurrentConversationId(conversation.id); // Set the current conversation ID
     // Close sidebar on mobile after selecting conversation
     if (isMobile) {
       setSidebarOpen(false);

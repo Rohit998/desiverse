@@ -7,13 +7,89 @@ const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
 // Immigration-related keywords to check if question is relevant
 const IMMIGRATION_KEYWORDS = [
-  'immigration', 'visa', 'visas', 'immigrant', 'immigrants', 'citizenship',
-  'residency', 'permanent resident', 'green card', 'work permit', 'study permit',
-  'passport', 'travel document', 'asylum', 'refugee', 'naturalization',
-  'documentation', 'application', 'immigration process', 'consulate', 'embassy',
-  'sponsorship', 'petition', 'immigration law', 'desi', 'india', 'pakistan',
-  'bangladesh', 'sri lanka', 'nepal', 'moving', 'relocating', 'settle',
-  'settlement', 'immigration status', 'entry', 'exit', 'border', 'customs'
+  // Core immigration terms
+  'immigration', 'immigrant', 'immigrants', 'emigration', 'emigrate', 'migrate', 'migration',
+  'visa', 'visas', 'visa application', 'visa requirements', 'visa process',
+  'citizenship', 'naturalization', 'naturalize', 'citizen',
+  'residency', 'resident', 'permanent resident', 'pr status', 'green card',
+  'work permit', 'work visa', 'employment visa', 'work authorization',
+  'study permit', 'student visa', 'study abroad',
+  'passport', 'passport application', 'passport renewal', 'travel document',
+  'asylum', 'asylum seeker', 'refugee', 'refugee status',
+  'documentation', 'documents', 'immigration documents', 'required documents',
+  'application', 'immigration application', 'apply', 'applying',
+  'immigration process', 'immigration procedure', 'immigration steps',
+  
+  // Immigration offices and agencies
+  'consulate', 'consular', 'embassy', 'uscis', 'ircc', 'cic', 'immigration office',
+  'immigration services', 'border agency', 'customs', 'immigration officer',
+  
+  // Legal and sponsorship terms
+  'sponsorship', 'sponsor', 'sponsored', 'petition', 'petitioner',
+  'immigration law', 'immigration lawyer', 'immigration attorney', 'immigration consultant',
+  'immigration lawyer', 'immigration case', 'immigration appeal',
+  
+  // Status and timeline terms
+  'immigration status', 'status check', 'application status', 'processing time',
+  'processing times', 'wait time', 'timeline', 'immigration timeline',
+  'entry', 'exit', 'entry visa', 'exit permit', 're-entry',
+  'border', 'border crossing', 'port of entry',
+  
+  // Country and region specific
+  'desi', 'south asian', 'south asia',
+  'india', 'indian', 'pakistan', 'pakistani', 'bangladesh', 'bangladeshi',
+  'sri lanka', 'sri lankan', 'nepal', 'nepali', 'nepalese',
+  'canada', 'canadian', 'usa', 'united states', 'us', 'america', 'american',
+  'uk', 'united kingdom', 'britain', 'british', 'australia', 'australian',
+  
+  // Life transition terms
+  'moving', 'relocating', 'relocation', 'migrate', 'settle', 'settlement',
+  'new country', 'abroad', 'overseas', 'expat', 'expatriate',
+  'diaspora', 'immigrant community',
+  
+  // Specific visa types
+  'family visa', 'family sponsorship', 'spousal visa', 'marriage visa',
+  'skilled worker', 'express entry', 'points system', 'cr score',
+  'investor visa', 'business visa', 'entrepreneur visa',
+  'visitor visa', 'tourist visa', 'travel visa', 'temporary visa',
+  'temporary resident', 'temporary status',
+  
+  // US visa types
+  'f1', 'f-1', 'f1 visa', 'student visa f1', 'f1 student',
+  'opt', 'optional practical training', 'opt extension', 'stem opt',
+  'h1b', 'h-1b', 'h1b visa', 'h1b petition', 'h1b cap', 'h1b lottery',
+  'h1b transfer', 'h1b extension', 'h1b renewal',
+  'eb1', 'eb-1', 'eb1a', 'eb-1a', 'eb1b', 'eb-1b', 'eb1c', 'eb-1c',
+  'eb2', 'eb-2', 'eb2 niw', 'eb-2 niw', 'eb2 perm', 'eb-2 perm',
+  'eb3', 'eb-3', 'eb3 skilled worker', 'eb-3 skilled worker',
+  'eb4', 'eb-4', 'eb4 special immigrant', 'eb-4 special immigrant',
+  'eb5', 'eb-5', 'eb5 investor', 'eb-5 investor', 'eb5 visa', 'eb-5 visa',
+  'employment based', 'employment-based', 'eb visa', 'eb category',
+  'b1', 'b-1', 'b1 visa', 'b-1 visa', 'business visa b1', 'business visitor',
+  'b2', 'b-2', 'b2 visa', 'b-2 visa', 'tourist visa b2', 'b2 tourist',
+  'b1 b2', 'b-1 b-2', 'b1/b2', 'b-1/b-2', 'b1b2', 'b-1b-2',
+  
+  // Immigration categories
+  'economic immigrant', 'family class', 'refugee class', 'humanitarian',
+  'humanitarian and compassionate', 'h&c application',
+  
+  // Common immigration concerns
+  'immigration interview', 'medical exam', 'medical examination', 'biometrics',
+  'background check', 'security check', 'police clearance', 'criminal check',
+  'language test', 'ielts', 'celpip', 'toefl', 'language requirements',
+  'education credential', 'credential assessment', 'wes', 'iccas',
+  'financial proof', 'proof of funds', 'bank statement', 'financial documents',
+  'job offer', 'lmia', 'labour market impact assessment',
+  
+  // Immigration issues
+  'immigration refusal', 'visa refusal', 'application refused', 'rejection',
+  'immigration appeal', 'appeal process', 'judicial review',
+  'immigration detention', 'removal', 'deportation', 'inadmissibility',
+  
+  // Settlement and integration
+  'settlement services', 'integration', 'newcomer', 'landing', 'landed',
+  'pr card', 'sin number', 'sin card', 'health card', 'driving license',
+  'tax number', 'tax id', 'social insurance'
 ];
 
 // Check if the question is related to immigration
