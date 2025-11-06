@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Plus, Menu, User, Loader2, LogIn, Settings, HelpCircle, Paperclip, MessageSquare, X } from 'lucide-react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
+import AuthModal from './AuthModal';
 
 // Function to format markdown text with headings and bold text
 const formatMessageText = (text: string) => {
@@ -79,6 +80,8 @@ export default function ChatInterface() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const streamingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -441,7 +444,13 @@ export default function ChatInterface() {
                       <div className="user-profile-email">rohit@example.com</div>
                     </div>
                   </div>
-                  <button className="login-btn-sidebar">
+                  <button 
+                    className="login-btn-sidebar"
+                    onClick={() => {
+                      setAuthMode('login');
+                      setShowAuthModal(true);
+                    }}
+                  >
                     <LogIn size={18} />
                     <span>Login</span>
                   </button>
@@ -661,6 +670,13 @@ export default function ChatInterface() {
           )}
         </div>
       </div>
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        initialMode={authMode}
+      />
     </div>
   );
 }
